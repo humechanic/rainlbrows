@@ -8,5 +8,5 @@ async def handle_blog(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     text = "Читай полезные статьи в моем блоге: https://rainlbrows.online/posts"
-    await query.edit_message_text(text, reply_markup=get_back_keyboard())
+    await query.message.reply_text(text, reply_markup=get_back_keyboard())
 

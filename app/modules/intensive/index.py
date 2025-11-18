@@ -8,5 +8,5 @@ async def handle_intensive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     text = "Записывайся на интенсив по продажам для бьюти-мастера: rainlbrows.online/beauty-sellers"
-    await query.edit_message_text(text, reply_markup=get_back_keyboard())
+    await query.message.reply_text(text, reply_markup=get_back_keyboard())
 
