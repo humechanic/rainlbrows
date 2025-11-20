@@ -4,12 +4,14 @@ from shared.constants.callback_register import (
     CALLBACK_MENU_MAIN,
     CALLBACK_MENU_DETAILS,
     CALLBACK_MENU_BLOG,
-    CALLBACK_MENU_INTENSIVE
+    CALLBACK_MENU_INTENSIVE,
+    CALLBACK_PAYMENT_INTENSIVE
 )
 from modules.main_menu.handler import handle_main_menu
 from modules.details.index import handle_details
 from modules.blog.index import handle_blog
 from modules.intensive.index import handle_intensive
+from modules.payment.index import send_intensive_invoice
 
 # Router mapping callback data to handlers
 CALLBACK_ROUTER = {
@@ -17,6 +19,7 @@ CALLBACK_ROUTER = {
     CALLBACK_MENU_DETAILS: handle_details,
     CALLBACK_MENU_BLOG: handle_blog,
     CALLBACK_MENU_INTENSIVE: handle_intensive,
+    CALLBACK_PAYMENT_INTENSIVE: send_intensive_invoice,
 }
 
 async def route_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
