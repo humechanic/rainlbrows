@@ -1,0 +1,86 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: rainlbrows_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-rainlbrows}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - rainlbrows_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    # Resource limits for PostgreSQL
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rainlbrows_app_prod
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+psycopg://${DB_USER:-postgres}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-rainlbrows}
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      PAYMENT_PROVIDER_TOKEN: ${PAYMENT_PROVIDER_TOKEN}
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rainlbrows_network
+    # Resource limits for application
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    # Healthcheck is defined in Dockerfile, but can be overridden here if needed
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+networks:
+  rainlbrows_network:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
+    driver: local

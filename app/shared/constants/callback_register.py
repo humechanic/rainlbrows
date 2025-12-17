@@ -13,6 +13,15 @@ CALLBACK_MENU_INTENSIVE = f"{CALLBACK_PREFIX_MENU}:intensive"
 # Payment callback
 CALLBACK_PAYMENT_INTENSIVE = "payment:intensive"
 CALLBACK_PROMOCODE = "promocode:enter"
+CALLBACK_MATERIALS_INTENSIVE = "materials:intensive"
+CALLBACK_GET_LESSON = "lesson:get"
+
+# Admin callbacks
+CALLBACK_ADMIN_EXPORT_USERS = "admin:export_users"
+CALLBACK_ADMIN_EXPORT_OFFERS = "admin:export_offers"
+
+# Admin user IDs
+ADMIN_USER_IDS = [486153193, 304711324]
 
 # Button texts
 BUTTON_TEXT_DETAILS = "Узнать подробнее"
@@ -21,4 +30,8 @@ BUTTON_TEXT_INTENSIVE = "Хочу на интенсив"
 BUTTON_TEXT_BACK = "Назад"
 BUTTON_TEXT_PAY = "Оплатить"
 BUTTON_TEXT_PROMOCODE = "Промокод"
+BUTTON_TEXT_MATERIALS = "Материалы интенсива"
+BUTTON_TEXT_GET_LESSON = "Забрать урок"
+BUTTON_TEXT_ADMIN_EXPORT_USERS = "Выгрузить базу пользователей"
+BUTTON_TEXT_ADMIN_EXPORT_OFFERS = "Выгрузить базу предложений"
 

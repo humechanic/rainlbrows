@@ -1,6 +1,9 @@
 from telegram import Update, LabeledPrice
 from telegram.ext import ContextTypes, ConversationHandler, CallbackQueryHandler, MessageHandler, filters
 import env
+import logging
+
+logger = logging.getLogger(__name__)
 from modules.payment.promocodes import (
     is_valid_promocode,
     get_discount_value,
@@ -10,9 +13,10 @@ from modules.payment.promocodes import (
 )
 from shared.utils.get_intensive_keyboard import get_intensive_keyboard
 from shared.constants.callback_register import CALLBACK_PROMOCODE
+from modules.main_menu.index import get_main_menu_keyboard
 
 # Payment configuration
-PAYMENT_PROVIDER_TOKEN = getattr(env, 'PAYMENT_PROVIDER_TOKEN', 'TEST_PAYMENT_PROVIDER_TOKEN')
+PAYMENT_PROVIDER_TOKEN = env.PAYMENT_PROVIDER_TOKEN
 INTENSIVE_PRICE = 35000  # Price in cents (100.00 currency units)
 INTENSIVE_CURRENCY = "BYN"
 INTENSIVE_TITLE = "Интенсив по продажам для бьюти-мастера"
@@ -34,36 +38,68 @@ async def start_promocode_input(update: Update, context: ContextTypes.DEFAULT_TY
 async def process_promocode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Process entered promocode"""
     promocode = update.message.text.strip()
+    user_id = update.effective_user.id
     
-    if is_valid_promocode(promocode):
-        discount_value = get_discount_value(promocode)
-        discount_amount = calculate_discount_amount(INTENSIVE_PRICE, discount_value)
-        final_price = calculate_final_price(INTENSIVE_PRICE, discount_value)
-        
-        # Store discount in user_data
-        context.user_data['discount_value'] = discount_value
-        context.user_data['promocode'] = promocode.upper()
-        
-        # Convert to currency units for display
-        discount_display = discount_amount / 100
-        final_price_display = final_price / 100
-        
-        # Build discount description
-        if is_percentage_discount(discount_value):
-            discount_desc = f"📊 Скидка: {discount_value}"
-        else:
-            discount_desc = f"📊 Скидка: {discount_display:.2f} {INTENSIVE_CURRENCY}"
-        
-        text = (
-            f"✅ Промокод '{promocode.upper()}' применен!\n\n"
-            f"💰 Экономия: {discount_display:.2f} {INTENSIVE_CURRENCY}\n"
-            f"💵 Цена со скидкой: {final_price_display:.2f} {INTENSIVE_CURRENCY}\n"
-            f"{discount_desc}"
+    # Get database session to check offer expiration for "УРОК" promocode
+    from db.session import get_db_session
+    from db.repository import get_or_create_user
+    
+    db = get_db_session()
+    try:
+        # Get or create user to get user_id for offer check
+        db_user = get_or_create_user(
+            db=db,
+            telegram_id=user_id,
+            nickname=update.effective_user.username,
+            first_name=update.effective_user.first_name,
+            last_name=update.effective_user.last_name,
+            is_premium=bool(getattr(update.effective_user, 'is_premium', False) or False)
         )
+        
+        # Check if promocode is valid (including offer expiration check for "УРОК")
+        if is_valid_promocode(promocode, user_id=db_user.id, db_session=db):
+            discount_value = get_discount_value(promocode)
+            discount_amount = calculate_discount_amount(INTENSIVE_PRICE, discount_value)
+            final_price = calculate_final_price(INTENSIVE_PRICE, discount_value)
+            
+            # Store discount in user_data
+            context.user_data['discount_value'] = discount_value
+            context.user_data['promocode'] = promocode.upper()
+            
+            # Convert to currency units for display
+            discount_display = discount_amount / 100
+            final_price_display = final_price / 100
+            
+            # Build discount description
+            if is_percentage_discount(discount_value):
+                discount_desc = f"📊 Скидка: {discount_value}"
+            else:
+                discount_desc = f"📊 Скидка: {discount_display:.2f} {INTENSIVE_CURRENCY}"
+            
+            text = (
+                f"✅ Промокод '{promocode.upper()}' применен!\n\n"
+                f"💰 Экономия: {discount_display:.2f} {INTENSIVE_CURRENCY}\n"
+                f"💵 Цена со скидкой: {final_price_display:.2f} {INTENSIVE_CURRENCY}\n"
+                f"{discount_desc}"
+            )
+            await update.message.reply_text(text, reply_markup=get_intensive_keyboard())
+        else:
+            # Check if it's "УРОК" promocode that expired
+            if promocode.upper() == "УРОК":
+                text = (
+                    "❌ Промокод 'УРОК' больше не действителен.\n\n"
+                    "⏰ Срок действия специального предложения истек.\n"
+                    "Попробуйте другой промокод или вернитесь назад."
+                )
+            else:
+                text = "❌ Промокод не существует. Попробуйте еще раз или вернитесь назад."
+            await update.message.reply_text(text, reply_markup=get_intensive_keyboard())
+    except Exception as e:
+        logger.error(f"Error processing promocode: {e}", exc_info=True)
+        text = "❌ Произошла ошибка при проверке промокода. Попробуйте еще раз."
         await update.message.reply_text(text, reply_markup=get_intensive_keyboard())
-    else:
-        text = "❌ Промокод не существует. Попробуйте еще раз или вернитесь назад."
-        await update.message.reply_text(text, reply_markup=get_intensive_keyboard())
+    finally:
+        db.close()
     
     return ConversationHandler.END
 
@@ -128,22 +164,89 @@ async def send_intensive_invoice(update: Update, context: ContextTypes.DEFAULT_T
 async def pre_checkout_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle pre-checkout query - approve payment"""
     query = update.pre_checkout_query
-    if query.payload == INTENSIVE_PAYLOAD:
-        await query.answer(ok=True)
-    else:
-        await query.answer(ok=False, error_message="Unknown payment payload")
+    if not query:
+        logger.warning("pre_checkout_handler called but update.pre_checkout_query is None")
+        return
+    
+    try:
+        # PreCheckoutQuery uses invoice_payload, not payload
+        invoice_payload = getattr(query, 'invoice_payload', None)
+        if not invoice_payload:
+            logger.warning(f"PreCheckoutQuery has no invoice_payload attribute. Query: {query}")
+            await query.answer(ok=False, error_message="Invalid payment request")
+            return
+        
+        if invoice_payload == INTENSIVE_PAYLOAD:
+            await query.answer(ok=True)
+            logger.info(f"Payment approved for invoice_payload: {invoice_payload}")
+        else:
+            logger.warning(f"Unknown payment invoice_payload: {invoice_payload}")
+            await query.answer(ok=False, error_message="Unknown payment payload")
+    except AttributeError as e:
+        logger.error(f"AttributeError in pre_checkout_handler: {e}, query: {query}")
+        try:
+            await query.answer(ok=False, error_message="Payment processing error")
+        except:
+            pass
+    except Exception as e:
+        logger.error(f"Error in pre_checkout_handler: {e}", exc_info=True)
+        # Try to answer query to prevent loading indicator
+        try:
+            await query.answer(ok=False, error_message="Payment processing error")
+        except:
+            pass
 
 async def successful_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle successful payment"""
     payment = update.message.successful_payment
     if payment.invoice_payload == INTENSIVE_PAYLOAD:
-        text = "Спасибо за оплату! Ваша запись на интенсив подтверждена. Мы свяжемся с вами в ближайшее время."
-        await update.message.reply_text(text)
+        user = update.effective_user
+        user_id = user.id
+        username = user.username or user.first_name or ""
+        
+        # Get payment amount
+        payment_amount = f"{payment.total_amount / 100:.2f} {payment.currency}"
+        
+        # Congratulate user
+        text = (
+            "🎉 Поздравляем! Оплата прошла успешно!\n\n"
+            "✅ Ваша запись на интенсив подтверждена.\n"
+            "📚 Теперь у вас есть доступ к материалам интенсива.\n\n"
+            "Мы свяжемся с вами в ближайшее время."
+        )
+        await update.message.reply_text(
+            text, 
+            reply_markup=get_main_menu_keyboard(has_paid=True, user_id=user_id)
+        )
+        
         # Clear discount data after successful payment - reset promocode
         if 'discount_value' in context.user_data:
             del context.user_data['discount_value']
         if 'promocode' in context.user_data:
             del context.user_data['promocode']
+
+async def failed_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle failed payment"""
+    text = (
+        "❌ К сожалению, оплата не прошла.\n\n"
+        "Возможные причины:\n"
+        "• Недостаточно средств на карте\n"
+        "• Проблемы с банком\n"
+        "• Отмена платежа\n\n"
+        "Попробуйте оплатить снова или вернитесь в главное меню."
+    )
+    
+    # Create keyboard with back to main menu button
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    from shared.constants.callback_register import CALLBACK_MENU_MAIN, CALLBACK_MENU_INTENSIVE, BUTTON_TEXT_BACK
+    
+    keyboard = [
+        [InlineKeyboardButton("Попробовать снова", callback_data=CALLBACK_MENU_INTENSIVE)],
+        [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(text, reply_markup=reply_markup)
 
 def get_promocode_conversation_handler():
     """Create and return ConversationHandler for promocode input"""

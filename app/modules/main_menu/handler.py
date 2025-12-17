@@ -1,12 +1,17 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from modules.main_menu.index import get_main_menu_keyboard
+from shared.utils.welcome_text import get_welcome_text
+from shared.utils.get_welcome_keyboard import get_welcome_keyboard
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle main menu callback - return to main menu"""
+    """Handle main menu callback - return to welcome message"""
     query = update.callback_query
     await query.answer()
     
-    text = "Привет, меня зовут Аня и здесь ты узнаешь про продажи бьюти мастера"
-    await query.message.reply_text(text, reply_markup=get_main_menu_keyboard())
+    user_id = update.effective_user.id
+    text = get_welcome_text()
+    await query.message.reply_text(text, reply_markup=get_welcome_keyboard(user_id=user_id))
 
