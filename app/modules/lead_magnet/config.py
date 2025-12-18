@@ -10,6 +10,8 @@ THIRD_REMINDER_AFTER_SECOND_HOURS = 3  # Final push 3 hours after second reminde
 
 # Testing intervals (in minutes) - for development/testing
 FIRST_REMINDER_MINUTES = 1  # First reminder after 1 minute (for testing)
+SECOND_REMINDER_MINUTES = 2  # Second reminder after 2 minutes (1 min after first)
+THIRD_REMINDER_AFTER_SECOND_MINUTES = 1  # Third reminder 1 minute after second
 LAST_CALL_REMINDER_MINUTES = 2  # Last call reminder after 2 minutes (for testing)
 
 # Option 1: YouTube link (recommended - simple and doesn't require file storage)
@@ -47,6 +49,9 @@ def get_lead_magnet_config():
         "second_reminder_hours": SECOND_REMINDER_HOURS,
         "third_reminder_after_second_hours": THIRD_REMINDER_AFTER_SECOND_HOURS,
         "third_reminder_hours": THIRD_REMINDER_AFTER_SECOND_HOURS,
+        "first_reminder_minutes": FIRST_REMINDER_MINUTES,
+        "second_reminder_minutes": SECOND_REMINDER_MINUTES,
+        "third_reminder_after_second_minutes": THIRD_REMINDER_AFTER_SECOND_MINUTES,
         "last_call_reminder_minutes": LAST_CALL_REMINDER_MINUTES,
         "contact_username": CONTACT_USERNAME
     }

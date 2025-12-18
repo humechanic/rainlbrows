@@ -204,6 +204,14 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
         user_id = user.id
         username = user.username or user.first_name or ""
         
+        # Cancel scheduled reminders (target action-2 performed)
+        try:
+            from scheduler.job_queue_reminders import cancel_lead_reminders
+            cancel_lead_reminders(context, user_id)
+            logger.info(f"Cancelled lead reminders for user_id={user_id} after successful payment")
+        except Exception as cancel_error:
+            logger.warning(f"Error cancelling reminders for user_id={user_id}: {cancel_error}")
+        
         # Get payment amount
         payment_amount = f"{payment.total_amount / 100:.2f} {payment.currency}"
         

@@ -5,6 +5,7 @@ from shared.utils.get_back import get_back_keyboard
 from modules.lead_magnet.config import get_lead_magnet_config
 from db.session import get_db_session
 from db.repository import get_or_create_user, mark_lesson_clicked
+from scheduler.job_queue_reminders import schedule_lead_reminders
 import os
 import logging
 
@@ -20,30 +21,60 @@ async def handle_get_lead_magnet(update: Update, context: ContextTypes.DEFAULT_T
     bot = context.bot
     config = get_lead_magnet_config()
     
-    # Mark lesson clicked in database for reminder scheduling
-    db = get_db_session()
+    # Try to use database-based reminder system first
+    # If database is unavailable, fallback to JobQueue-based system
+    db_available = False
     try:
-        # Get or create user
-        db_user = get_or_create_user(
-            db=db,
-            telegram_id=user_id,
-            nickname=update.effective_user.username,
-            first_name=update.effective_user.first_name,
-            last_name=update.effective_user.last_name,
-            is_premium=bool(getattr(update.effective_user, 'is_premium', False) or False)
-        )
-        
-        # Mark lesson clicked - reminders will be sent automatically by periodic task
-        offer = mark_lesson_clicked(db, db_user.id)
-        
-        if offer:
-            logger.info(f"Marked lesson clicked for user_id={user_id}, offer_id={offer.id}. Reminders will be sent automatically by periodic task.")
-        else:
-            logger.warning(f"No offer found for user_id={user_id}, cannot mark lesson clicked")
-    except Exception as db_error:
-        logger.error(f"Database error in handle_get_lead_magnet: {db_error}", exc_info=True)
-    finally:
-        db.close()
+        db = get_db_session()
+        try:
+            # Test database connection by trying to get or create user
+            db_user = get_or_create_user(
+                db=db,
+                telegram_id=user_id,
+                nickname=update.effective_user.username,
+                first_name=update.effective_user.first_name,
+                last_name=update.effective_user.last_name,
+                is_premium=bool(getattr(update.effective_user, 'is_premium', False) or False)
+            )
+            
+            # Mark lesson clicked - this triggers database-based reminder system
+            # (process_reminders in scheduler/reminders.py will pick it up)
+            offer = mark_lesson_clicked(db, db_user.id)
+            
+            if offer:
+                db_available = True
+                logger.info(f"Database available: marked lesson clicked for user_id={user_id}, offer_id={offer.id}. Using database-based reminder system.")
+            else:
+                logger.warning(f"Database available but no offer found for user_id={user_id}. Will use JobQueue fallback.")
+        except Exception as db_error:
+            logger.warning(f"Database error in handle_get_lead_magnet: {db_error}. Will use JobQueue fallback.")
+            db_available = False
+        finally:
+            db.close()
+    except Exception as db_session_error:
+        logger.warning(f"Could not get database session: {db_session_error}. Will use JobQueue fallback.")
+        db_available = False
+    
+    # Fallback to JobQueue-based reminder system if database is not available
+    if not db_available:
+        try:
+            # Check if JobQueue is available before trying to use it
+            try:
+                job_queue = context.job_queue
+                if job_queue is None:
+                    raise AttributeError("JobQueue is None")
+            except AttributeError:
+                logger.warning("JobQueue is not available. Reminders will not be sent. Install python-telegram-bot[job-queue] to enable fallback reminder system.")
+                # Continue - user still gets the lesson even if reminders can't be scheduled
+                return
+            
+            # Use minutes for testing, set to False for production (uses hours)
+            use_minutes = false  # Set to False in production
+            schedule_lead_reminders(context, user_id, use_minutes=use_minutes)
+            logger.info(f"Database unavailable: scheduled lead reminders for user_id={user_id} using JobQueue (fallback mode)")
+        except Exception as reminder_error:
+            logger.error(f"Error scheduling reminders via JobQueue for user_id={user_id}: {reminder_error}", exc_info=True)
+            # Continue even if reminder scheduling fails - user still gets the lesson
     
     # Get lesson description
     description = config["description"]
