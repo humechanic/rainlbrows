@@ -1,5 +1,16 @@
 import logging
 import env
+
+# Import database session lazily to avoid initialization errors
+# This allows the app to start even if database is not available
+try:
+    from db.session import get_db_session
+    DB_AVAILABLE = True
+except Exception as e:
+    logging.warning(f"Database session not available: {e}. Some features will be disabled.")
+    DB_AVAILABLE = False
+    get_db_session = None
+
 from telegram import Update
 from telegram.error import NetworkError, TimedOut, RetryAfter
 from telegram.ext import (
@@ -11,7 +22,19 @@ from telegram.ext import (
     filters,
     ContextTypes
 )
-from scheduler.reminders import process_reminders
+
+# Import scheduler only if database is available
+if DB_AVAILABLE:
+    try:
+        from scheduler.reminders import process_reminders
+        REMINDERS_AVAILABLE = True
+    except Exception as e:
+        logging.warning(f"Database-based reminders not available: {e}. Will use JobQueue fallback only.")
+        REMINDERS_AVAILABLE = False
+        process_reminders = None
+else:
+    REMINDERS_AVAILABLE = False
+    process_reminders = None
 from modules.init.start import start_view
 from shared.routers.callback_router import route_callback
 from shared.constants.callback_register import COMMAND_START
@@ -90,16 +113,19 @@ def setup_jobs(application):
         logging.warning("JobQueue is not available. Reminders will not work.")
         return
     
-    # Schedule reminder processing every 1 minute (for testing)
-    # This will check database and send reminders to users who need them
-    job_queue.run_repeating(
-        callback=process_reminders,
-        interval=60,  # 1 minute in seconds (for testing)
-        first=10,  # Start after 10 seconds
-        name='process_reminders'
-    )
-    
-    logging.info("Scheduled reminder processing: every 1 minute (testing mode)")
+    # Schedule database-based reminder processing if available
+    if REMINDERS_AVAILABLE and process_reminders is not None:
+        # Schedule reminder processing every 1 minute (for testing)
+        # This will check database and send reminders to users who need them
+        job_queue.run_repeating(
+            callback=process_reminders,
+            interval=60,  # 1 minute in seconds (for testing)
+            first=10,  # Start after 10 seconds
+            name='process_reminders'
+        )
+        logging.info("Scheduled database-based reminder processing: every 1 minute (testing mode)")
+    else:
+        logging.info("Database-based reminders not available. Using JobQueue fallback only.")
 
 
 def main():

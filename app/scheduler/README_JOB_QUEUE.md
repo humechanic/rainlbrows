@@ -61,3 +61,4 @@ cancel_lead_reminders(context, user_id)
 - Имена задач: `first_reminder_{user_id}`, `second_reminder_{user_id}`, `third_reminder_{user_id}`
 - Отмена через APScheduler API (`job.remove()` или `job.schedule_removal()`)
 
+

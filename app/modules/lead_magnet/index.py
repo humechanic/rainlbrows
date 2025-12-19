@@ -69,7 +69,7 @@ async def handle_get_lead_magnet(update: Update, context: ContextTypes.DEFAULT_T
                 return
             
             # Use minutes for testing, set to False for production (uses hours)
-            use_minutes = false  # Set to False in production
+            use_minutes = False  # Set to False in production
             schedule_lead_reminders(context, user_id, use_minutes=use_minutes)
             logger.info(f"Database unavailable: scheduled lead reminders for user_id={user_id} using JobQueue (fallback mode)")
         except Exception as reminder_error:
