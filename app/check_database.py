@@ -8,7 +8,7 @@ import os
 # Add app directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from db.session import engine
+from db.session import get_engine
 from db.models import User, Offer
 from db.base import Base
 from sqlalchemy import inspect
@@ -17,6 +17,11 @@ def check_database():
     """Check database connection and tables"""
     print("Checking database connection...")
     try:
+        engine = get_engine()
+        if engine is None:
+            print("❌ Database engine is not available. Cannot check database.")
+            return False
+        
         conn = engine.connect()
         print("✅ Database connection successful!")
         

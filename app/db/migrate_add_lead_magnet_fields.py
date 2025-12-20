@@ -10,7 +10,7 @@ app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, app_dir)
 
 from sqlalchemy import text
-from db.session import engine
+from db.session import get_engine
 import logging
 
 logging.basicConfig(
@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 def migrate():
     """Add lead magnet tracking fields to offers table"""
     try:
+        engine = get_engine()
+        if engine is None:
+            raise RuntimeError("Database engine is not available. Cannot run migration.")
+        
         with engine.connect() as conn:
             # Check if columns already exist
             check_query = text("""
