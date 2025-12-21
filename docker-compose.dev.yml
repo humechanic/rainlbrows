@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: rainlbrows
     ports:
-      - "5433:5433"
+      - "5433:5432" # Внешний порт 5433 -> внутренний порт 5432 PostgreSQL
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
     container_name: rainlbrows_app_dev
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5433/rainlbrows
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/rainlbrows
       TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
       PAYMENT_PROVIDER_TOKEN: ${PAYMENT_PROVIDER_TOKEN}
       PYTHONUNBUFFERED: 1

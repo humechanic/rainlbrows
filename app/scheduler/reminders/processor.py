@@ -36,7 +36,12 @@ async def process_reminders(context):
     Args:
         context: CallbackContext from JobQueue
     """
-    db = get_db_session()
+    try:
+        db = get_db_session()
+    except Exception as db_error:
+        logger.error(f"Failed to get database session: {db_error}. Skipping reminder processing.")
+        return
+    
     try:
         # Use bot from context
         bot = context.bot
@@ -103,5 +108,9 @@ async def process_reminders(context):
     except Exception as e:
         logger.error(f"Error processing reminders: {e}", exc_info=True)
     finally:
-        db.close()
+        if db is not None:
+            try:
+                db.close()
+            except Exception as close_error:
+                logger.warning(f"Error closing database session: {close_error}")
 
