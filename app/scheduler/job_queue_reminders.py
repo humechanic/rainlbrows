@@ -6,159 +6,137 @@ Reminders can be cancelled if target action-2 is performed.
 """
 from telegram import Update
 from telegram.ext import ContextTypes
-from telegram.error import TelegramError, NetworkError, TimedOut, RetryAfter, BadRequest
 from modules.lead_magnet.config import get_lead_magnet_config
 from shared.utils.get_lead_reminder_keyboards import (
     get_watch_lesson_keyboard,
     get_second_reminder_keyboard,
     get_third_reminder_keyboard
 )
+from shared.utils.telegram_error_handler import send_message_with_error_handling
 import logging
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
 # Job names for identification and cancellation
-JOB_NAME_FIRST_REMINDER = "first_reminder_{user_id}"
-JOB_NAME_SECOND_REMINDER = "second_reminder_{user_id}"
-JOB_NAME_THIRD_REMINDER = "third_reminder_{user_id}"
+# Note: These are for fallback system (without DB)
+# New DB-based system uses different job names in lead_magnet modules
+JOB_NAME_FIRST_REMINDER = "first_reminder_fallback_{user_id}"
+JOB_NAME_SECOND_REMINDER = "second_reminder_fallback_{user_id}"
+JOB_NAME_THIRD_REMINDER = "third_reminder_fallback_{user_id}"
 
 
-async def send_first_reminder_callback(context: ContextTypes.DEFAULT_TYPE):
-    """Callback for first reminder - send watch lesson reminder"""
+async def send_first_reminder_callback_fallback(context: ContextTypes.DEFAULT_TYPE):
+    """Callback for first reminder (fallback, no DB) - send watch lesson reminder"""
     user_id = context.job.data.get('user_id')
     if not user_id:
         logger.error("First reminder callback: user_id not found in job data")
         return
     
-    try:
-        config = get_lead_magnet_config()
-        text = (
-            "Коллеги, не забывайте посмотреть урок \"ТОП 3 ошибки в продажах бьюти мастера\"\n\n"
-            "Что разобрали?\n\n"
-            "▪️ почему клиенты не записываются? ТОП ошибок, о которых никто не говорит\n\n"
-            "▪️ реальные примеры из практики для любой бьюти-ниши\n\n"
-            "▪️ как привести к покупке через 5 минут после подписки\n\n"
-            "🔥рекомендации, которые можно внедрить сразу в ваш инстаграм\n\n"
-            "А также рассказала про свой интенсив \"Продажи бьюти-мастера\" и бонусы для участников интенсива❤️\n\n"
-            f"Ссылка на урок: {config['youtube_url']}"
-        )
-        
-        keyboard = get_watch_lesson_keyboard()
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=text,
-            reply_markup=keyboard
-        )
-        logger.info(f"Sent first lead reminder to user_id={user_id}")
-    except (NetworkError, TimedOut) as e:
-        logger.warning(f"Network error sending first reminder to user_id={user_id}: {e}")
-    except RetryAfter as e:
-        logger.warning(f"Rate limit sending first reminder to user_id={user_id}: {e}")
-    except BadRequest as e:
-        logger.error(f"Bad request sending first reminder to user_id={user_id}: {e}")
-    except TelegramError as e:
-        logger.error(f"Failed to send first reminder to user_id={user_id}: {e}", exc_info=True)
-    except Exception as e:
-        logger.error(f"Unexpected error sending first reminder to user_id={user_id}: {e}", exc_info=True)
+    config = get_lead_magnet_config()
+    text = (
+        "Коллеги, не забывайте посмотреть урок \"ТОП 3 ошибки в продажах бьюти мастера\"\n\n"
+        "Что разобрали?\n\n"
+        "▪️ почему клиенты не записываются? ТОП ошибок, о которых никто не говорит\n\n"
+        "▪️ реальные примеры из практики для любой бьюти-ниши\n\n"
+        "▪️ как привести к покупке через 5 минут после подписки\n\n"
+        "🔥рекомендации, которые можно внедрить сразу в ваш инстаграм\n\n"
+        "А также рассказала про свой интенсив \"Продажи бьюти-мастера\" и бонусы для участников интенсива❤️\n\n"
+        f"Ссылка на урок: {config['youtube_url']}"
+    )
+    
+    keyboard = get_watch_lesson_keyboard()
+    await send_message_with_error_handling(
+        context.bot.send_message,
+        user_id,
+        "first lead reminder (JobQueue)",
+        message_text=text,
+        chat_id=user_id,
+        text=text,
+        reply_markup=keyboard
+    )
 
 
-async def send_second_reminder_callback(context: ContextTypes.DEFAULT_TYPE):
-    """Callback for second reminder - send special price reminder"""
+async def send_second_reminder_callback_fallback(context: ContextTypes.DEFAULT_TYPE):
+    """Callback for second reminder (fallback, no DB) - send special price reminder"""
     user_id = context.job.data.get('user_id')
     if not user_id:
         logger.error("Second reminder callback: user_id not found in job data")
         return
     
-    try:
-        text = (
-            "❓ <b>ТОП-4 вопроса об интенсиве \"Продажи бьюти-мастера\"</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            
-            "🔹 <b>Для какой бьюти ниши подойдет интенсив?</b>\n"
-            "   Интенсив подходит для любой ниши: брови, перманент, массаж, ламинирование ресниц, "
-            "косметология, подология, маникюр, кератин - примеры и инструменты в уроках можно "
-            "адаптировать под любую нишу.\n\n"
-            
-            "🔹 <b>Смогу ли я проходить интенсив, если у меня плотный график?</b>\n"
-            "   Да, уроки интенсива в записи, можно просматривать их и выполнять рекомендации в "
-            "любое удобное для вас время.\n\n"
-            
-            "🔹 <b>Хочу начать обучать, поможет ли мне интенсив?</b>\n"
-            "   Да, уроки в интенсиве построены на базовых знаниях маркетинга и продаж, поэтому "
-            "вы с легкостью сможете их адаптировать для вашего будущего курса.\n\n"
-            
-            "🔹 <b>Смогу ли я задать вопросы по своему инстаграм автору интенсива?</b>\n"
-            "   Да, после просмотра интенсива вы сможете задать вопросы в отдельный чат, Анна "
-            "дает обратную связь в чате и также проводит прямые эфиры с разбором популярных вопросов.\n\n"
-            
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            "💫 <i>Почему бы не начать Новый год по новому? Еще и с поддержкой и рекомендациями от меня.</i>\n\n"
-            "🔥 <b>Смотри урок, там есть промокод на участие</b>"
-        )
+    text = (
+        "❓ <b>ТОП-4 вопроса об интенсиве \"Продажи бьюти-мастера\"</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         
-        keyboard = get_second_reminder_keyboard()
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=text,
-            parse_mode='HTML',
-            reply_markup=keyboard
-        )
-        logger.info(f"Sent second lead reminder to user_id={user_id}")
-    except (NetworkError, TimedOut) as e:
-        logger.warning(f"Network error sending second reminder to user_id={user_id}: {e}")
-    except RetryAfter as e:
-        logger.warning(f"Rate limit sending second reminder to user_id={user_id}: {e}")
-    except BadRequest as e:
-        logger.error(f"Bad request sending second reminder to user_id={user_id}: {e}")
-    except TelegramError as e:
-        logger.error(f"Failed to send second reminder to user_id={user_id}: {e}", exc_info=True)
-    except Exception as e:
-        logger.error(f"Unexpected error sending second reminder to user_id={user_id}: {e}", exc_info=True)
+        "🔹 <b>Для какой бьюти ниши подойдет интенсив?</b>\n"
+        "   Интенсив подходит для любой ниши: брови, перманент, массаж, ламинирование ресниц, "
+        "косметология, подология, маникюр, кератин - примеры и инструменты в уроках можно "
+        "адаптировать под любую нишу.\n\n"
+        
+        "🔹 <b>Смогу ли я проходить интенсив, если у меня плотный график?</b>\n"
+        "   Да, уроки интенсива в записи, можно просматривать их и выполнять рекомендации в "
+        "любое удобное для вас время.\n\n"
+        
+        "🔹 <b>Хочу начать обучать, поможет ли мне интенсив?</b>\n"
+        "   Да, уроки в интенсиве построены на базовых знаниях маркетинга и продаж, поэтому "
+        "вы с легкостью сможете их адаптировать для вашего будущего курса.\n\n"
+        
+        "🔹 <b>Смогу ли я задать вопросы по своему инстаграм автору интенсива?</b>\n"
+        "   Да, после просмотра интенсива вы сможете задать вопросы в отдельный чат, Анна "
+        "дает обратную связь в чате и также проводит прямые эфиры с разбором популярных вопросов.\n\n"
+        
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "💫 <i>Почему бы не начать Новый год по новому? Особенно с поддержкой и рекомендациями от эксперта.</i>\n\n"
+        "🔥 <b>Смотри урок, там есть промокод на участие</b>"
+    )
+    
+    keyboard = get_second_reminder_keyboard()
+    await send_message_with_error_handling(
+        context.bot.send_message,
+        user_id,
+        "second lead reminder (JobQueue)",
+        message_text=text,
+        chat_id=user_id,
+        text=text,
+        parse_mode='HTML',
+        reply_markup=keyboard
+    )
 
 
-async def send_third_reminder_callback(context: ContextTypes.DEFAULT_TYPE):
-    """Callback for third reminder - send final push reminder"""
+async def send_third_reminder_callback_fallback(context: ContextTypes.DEFAULT_TYPE):
+    """Callback for third reminder (fallback, no DB) - send final push reminder"""
     user_id = context.job.data.get('user_id')
     if not user_id:
         logger.error("Third reminder callback: user_id not found in job data")
         return
     
-    try:
-        text = (
-            "🔔 <b>Важно!</b>\n"
-            "Скоро спецпредложение пропадет\n\n"
-            
-            "Успей:\n\n"
-            
-            "▪️ Забрать место на курсе с выгодой (без промокода цена будет выше)\n\n"
-            
-            "▪️ Получить бонусы:\n\n"
-            
-            "- урок «Нейросети для бьюти мастера» - как создать контент без моделей, с 0 и оживить фото "
-            "(практический урок от приглашенного эксперта Александры Легович)\n\n"
-            
-            "- готовый контент-план с идеями, который можно адаптировать под любой месяц и нишу\n\n"
-        )
+    text = (
+        "🔔 <b>Важно!</b>\n"
+        "Скоро спецпредложение пропадет\n\n"
         
-        keyboard = get_third_reminder_keyboard()
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=text,
-            parse_mode='HTML',
-            reply_markup=keyboard
-        )
-        logger.info(f"Sent third lead reminder to user_id={user_id}")
-    except (NetworkError, TimedOut) as e:
-        logger.warning(f"Network error sending third reminder to user_id={user_id}: {e}")
-    except RetryAfter as e:
-        logger.warning(f"Rate limit sending third reminder to user_id={user_id}: {e}")
-    except BadRequest as e:
-        logger.error(f"Bad request sending third reminder to user_id={user_id}: {e}")
-    except TelegramError as e:
-        logger.error(f"Failed to send third reminder to user_id={user_id}: {e}", exc_info=True)
-    except Exception as e:
-        logger.error(f"Unexpected error sending third reminder to user_id={user_id}: {e}", exc_info=True)
+        "Успей:\n\n"
+        
+        "▪️ Забрать место на курсе с выгодой (без промокода цена будет выше)\n\n"
+        
+        "▪️ Получить бонусы:\n\n"
+        
+        "- урок «Нейросети для бьюти мастера» - как создать контент без моделей, с 0 и оживить фото "
+        "(практический урок от приглашенного эксперта Александры Легович)\n\n"
+        
+        "- готовый контент-план с идеями, который можно адаптировать под любой месяц и нишу\n\n"
+    )
+    
+    keyboard = get_third_reminder_keyboard()
+    await send_message_with_error_handling(
+        context.bot.send_message,
+        user_id,
+        "third lead reminder (JobQueue)",
+        message_text=text,
+        chat_id=user_id,
+        text=text,
+        parse_mode='HTML',
+        reply_markup=keyboard
+    )
 
 
 def schedule_lead_reminders(context: ContextTypes.DEFAULT_TYPE, user_id: int, use_minutes: bool = False):
@@ -204,31 +182,31 @@ def schedule_lead_reminders(context: ContextTypes.DEFAULT_TYPE, user_id: int, us
         # Schedule first reminder
         first_job_name = JOB_NAME_FIRST_REMINDER.format(user_id=user_id)
         first_job = job_queue.run_once(
-            callback=send_first_reminder_callback,
+            callback=send_first_reminder_callback_fallback,
             when=first_interval,
             data=job_data,
             name=first_job_name,
             chat_id=user_id
         )
         job_names.append(first_job_name)
-        logger.info(f"Scheduled first reminder for user_id={user_id} in {first_interval}s")
+        logger.info(f"Scheduled first reminder (fallback) for user_id={user_id} in {first_interval}s")
         
         # Schedule second reminder (after first interval + second interval)
         second_job_name = JOB_NAME_SECOND_REMINDER.format(user_id=user_id)
         second_job = job_queue.run_once(
-            callback=send_second_reminder_callback,
+            callback=send_second_reminder_callback_fallback,
             when=first_interval + second_interval,
             data=job_data,
             name=second_job_name,
             chat_id=user_id
         )
         job_names.append(second_job_name)
-        logger.info(f"Scheduled second reminder for user_id={user_id} in {first_interval + second_interval}s")
+        logger.info(f"Scheduled second reminder (fallback) for user_id={user_id} in {first_interval + second_interval}s")
         
         # Schedule third reminder (after second reminder + third interval)
         third_job_name = JOB_NAME_THIRD_REMINDER.format(user_id=user_id)
         third_job = job_queue.run_once(
-            callback=send_third_reminder_callback,
+            callback=send_third_reminder_callback_fallback,
             when=first_interval + second_interval + third_interval,
             data=job_data,
             name=third_job_name,
@@ -246,7 +224,7 @@ def schedule_lead_reminders(context: ContextTypes.DEFAULT_TYPE, user_id: int, us
 
 def cancel_lead_reminders(context: ContextTypes.DEFAULT_TYPE, user_id: int):
     """
-    Cancel all scheduled lead reminders for a user.
+    Cancel all scheduled lead reminders for a user (both fallback and DB-based).
     This should be called when target action-2 is performed (e.g., payment or intensive page visit).
     
     Args:
@@ -267,11 +245,17 @@ def cancel_lead_reminders(context: ContextTypes.DEFAULT_TYPE, user_id: int):
     cancelled_count = 0
     
     try:
-        # Get all jobs for this user
+        # Get all jobs for this user (both fallback and DB-based)
         job_names = [
+            # Fallback system (no DB)
             JOB_NAME_FIRST_REMINDER.format(user_id=user_id),
             JOB_NAME_SECOND_REMINDER.format(user_id=user_id),
-            JOB_NAME_THIRD_REMINDER.format(user_id=user_id)
+            JOB_NAME_THIRD_REMINDER.format(user_id=user_id),
+            # DB-based system
+            f"special_offer_reminder_{user_id}",
+            f"second_lead_reminder_{user_id}",
+            f"third_lead_reminder_{user_id}",
+            f"fourth_lead_reminder_{user_id}",
         ]
         
         # Cancel each job by iterating through all jobs

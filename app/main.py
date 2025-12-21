@@ -26,7 +26,7 @@ from telegram.ext import (
 # Import scheduler only if database is available
 if DB_AVAILABLE:
     try:
-        from scheduler.reminders import process_reminders
+from scheduler.reminders import process_reminders
         REMINDERS_AVAILABLE = True
     except Exception as e:
         logging.warning(f"Database-based reminders not available: {e}. Will use JobQueue fallback only.")
@@ -115,14 +115,14 @@ def setup_jobs(application):
     
     # Schedule database-based reminder processing if available
     if REMINDERS_AVAILABLE and process_reminders is not None:
-        # Schedule reminder processing every 1 minute (for testing)
-        # This will check database and send reminders to users who need them
-        job_queue.run_repeating(
-            callback=process_reminders,
-            interval=60,  # 1 minute in seconds (for testing)
-            first=10,  # Start after 10 seconds
-            name='process_reminders'
-        )
+    # Schedule reminder processing every 1 minute (for testing)
+    # This will check database and send reminders to users who need them
+    job_queue.run_repeating(
+        callback=process_reminders,
+        interval=60,  # 1 minute in seconds (for testing)
+        first=10,  # Start after 10 seconds
+        name='process_reminders'
+    )
         logging.info("Scheduled database-based reminder processing: every 1 minute (testing mode)")
     else:
         logging.info("Database-based reminders not available. Using JobQueue fallback only.")

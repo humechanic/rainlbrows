@@ -269,6 +269,31 @@ def mark_second_reminder_sent(db: Session, offer_id: int):
         logger.info(f"Marked second reminder sent for offer_id={offer_id}")
 
 
+def get_users_for_special_offer_reminder(db: Session, hours_after_click: int = 24, minutes_after_click: int = None) -> list[Offer]:
+    """Get users who need special offer reminder (24 hours after lesson click)
+    
+    Args:
+        hours_after_click: Hours after lesson click (default: 24)
+        minutes_after_click: Minutes after lesson click (for testing, overrides hours_after_click if provided)
+    """
+    now = datetime.now(timezone.utc)
+    if minutes_after_click is not None:
+        threshold = now - timedelta(minutes=minutes_after_click)
+    else:
+        threshold = now - timedelta(hours=hours_after_click)
+    
+    offers = db.query(Offer).filter(
+        and_(
+            Offer.lesson_clicked_at != None,
+            Offer.lesson_clicked_at <= threshold,
+            Offer.reminder_type != "special_offer",  # Not already sent
+            Offer.is_active == True
+        )
+    ).all()
+    
+    return offers
+
+
 def log_pay_click(db: Session, user_id: int, source: str | None = None) -> PayClick:
     """Create pay click analytics record"""
     pay_click = PayClick(

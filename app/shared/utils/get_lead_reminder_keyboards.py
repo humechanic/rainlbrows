@@ -29,11 +29,14 @@ def get_watch_lesson_keyboard():
 
 
 def get_second_reminder_keyboard():
-    """Keyboard for special offer reminders"""
+    """Keyboard for second reminder with watch lesson, intensive and promocode buttons"""
+    config = get_lead_magnet_config()
+    youtube_url = config["youtube_url"]
+    
     keyboard = [
-        [InlineKeyboardButton(BUTTON_TEXT_INTENSIVE, callback_data=CALLBACK_PAYMENT_INTENSIVE)],
-        [InlineKeyboardButton(BUTTON_TEXT_PROMOCODE, callback_data=CALLBACK_PROMOCODE)],
-        [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
+        [InlineKeyboardButton("Смотреть урок", url=youtube_url)],
+        [InlineKeyboardButton("Забрать место на интенсиве", callback_data=CALLBACK_PAYMENT_INTENSIVE)],
+        [InlineKeyboardButton("Ввести промокод", callback_data=CALLBACK_PROMOCODE)]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -48,6 +51,16 @@ def get_last_call_reminder_keyboard():
     keyboard = [
         [InlineKeyboardButton("Забрать интенсив", callback_data=CALLBACK_PAYMENT_INTENSIVE)],
         [InlineKeyboardButton("Применить промокод", callback_data=CALLBACK_PROMOCODE)],
+        [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_special_offer_keyboard():
+    """Keyboard for special offer reminder with intensive, promocode and back buttons"""
+    keyboard = [
+        [InlineKeyboardButton("Забрать место на интенсиве", callback_data=CALLBACK_PAYMENT_INTENSIVE)],
+        [InlineKeyboardButton(BUTTON_TEXT_PROMOCODE, callback_data=CALLBACK_PROMOCODE)],
         [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
     ]
     return InlineKeyboardMarkup(keyboard)

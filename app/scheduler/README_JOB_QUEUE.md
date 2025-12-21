@@ -7,6 +7,7 @@
 ## Как это работает
 
 1. **Целевое действие-1**: Пользователь кликает "Забрать урок" (`CALLBACK_GET_LESSON`)
+
    - Автоматически планируются 3 напоминания через `schedule_lead_reminders()`
    - Напоминания используют таймауты из конфигурации (минуты для тестирования, часы для продакшена)
 
@@ -51,6 +52,7 @@ cancel_lead_reminders(context, user_id)
 ## Интеграция
 
 Модуль уже интегрирован в:
+
 - `modules/lead_magnet/index.py` - планирование после клика на урок
 - `modules/payment/index.py` - отмена после успешной оплаты
 - `modules/intensive/index.py` - опциональная отмена при переходе на страницу интенсива
@@ -60,6 +62,3 @@ cancel_lead_reminders(context, user_id)
 - Использует `JobQueue.run_once()` для одноразовых задач
 - Имена задач: `first_reminder_{user_id}`, `second_reminder_{user_id}`, `third_reminder_{user_id}`
 - Отмена через APScheduler API (`job.remove()` или `job.schedule_removal()`)
-
-
-
