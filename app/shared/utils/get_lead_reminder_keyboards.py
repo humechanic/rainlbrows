@@ -1,42 +1,33 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from shared.constants.callback_register import (
     CALLBACK_MENU_MAIN,
-    CALLBACK_MENU_INTENSIVE,
-    CALLBACK_PAYMENT_INTENSIVE,
-    CALLBACK_PROMOCODE,
-    BUTTON_TEXT_BACK,
-    BUTTON_TEXT_PAY,
-    BUTTON_TEXT_PROMOCODE,
-    BUTTON_TEXT_INTENSIVE
+    BUTTON_TEXT_BACK
 )
 from modules.lead_magnet.config import get_lead_magnet_config
 
 
 def get_watch_lesson_keyboard():
-    """Keyboard for watch lesson reminder with intensive and promocode buttons"""
+    """Keyboard for watch lesson reminder with website link"""
     config = get_lead_magnet_config()
     youtube_url = config["youtube_url"]
     
     keyboard = [
         [InlineKeyboardButton("Смотреть урок", url=youtube_url)],
-        [
-            InlineKeyboardButton(BUTTON_TEXT_INTENSIVE, callback_data=CALLBACK_MENU_INTENSIVE),
-            InlineKeyboardButton("Ввести промокод", callback_data=CALLBACK_PROMOCODE)
-        ],
+        [InlineKeyboardButton("Перейти на сайт интенсива", url="https://rainlbrows.online/beauty-sellers")],
         [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 
 def get_second_reminder_keyboard():
-    """Keyboard for second reminder with watch lesson, intensive and promocode buttons"""
+    """Keyboard for second reminder with website link"""
     config = get_lead_magnet_config()
     youtube_url = config["youtube_url"]
     
     keyboard = [
         [InlineKeyboardButton("Смотреть урок", url=youtube_url)],
-        [InlineKeyboardButton("Забрать место на интенсиве", callback_data=CALLBACK_PAYMENT_INTENSIVE)],
-        [InlineKeyboardButton("Ввести промокод", callback_data=CALLBACK_PROMOCODE)]
+        [InlineKeyboardButton("Перейти на сайт интенсива", url="https://rainlbrows.online/beauty-sellers")],
+        [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -47,20 +38,18 @@ def get_third_reminder_keyboard():
 
 
 def get_last_call_reminder_keyboard():
-    """Keyboard for last call reminder with intensive and promocode buttons"""
+    """Keyboard for last call reminder with website link"""
     keyboard = [
-        [InlineKeyboardButton("Забрать интенсив", callback_data=CALLBACK_PAYMENT_INTENSIVE)],
-        [InlineKeyboardButton("Применить промокод", callback_data=CALLBACK_PROMOCODE)],
+        [InlineKeyboardButton("Перейти на сайт интенсива", url="https://rainlbrows.online/beauty-sellers")],
         [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 
 def get_special_offer_keyboard():
-    """Keyboard for special offer reminder with intensive, promocode and back buttons"""
+    """Keyboard for special offer reminder with website link"""
     keyboard = [
-        [InlineKeyboardButton("Забрать место на интенсиве", callback_data=CALLBACK_PAYMENT_INTENSIVE)],
-        [InlineKeyboardButton(BUTTON_TEXT_PROMOCODE, callback_data=CALLBACK_PROMOCODE)],
+        [InlineKeyboardButton("Перейти на сайт интенсива", url="https://rainlbrows.online/beauty-sellers")],
         [InlineKeyboardButton(BUTTON_TEXT_BACK, callback_data=CALLBACK_MENU_MAIN)]
     ]
     return InlineKeyboardMarkup(keyboard)
