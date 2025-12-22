@@ -32,6 +32,16 @@ DATABASE_URL = os.getenv(
     'postgresql+psycopg://postgres:postgres@localhost:5432/rainlbrows'
 )
 
+# BePaid Payment Links
+BEPAID_PAYMENT_URL_WITHOUT_PROMO = os.getenv(
+    'BEPAID_PAYMENT_URL_WITHOUT_PROMO',
+    'https://api.bepaid.by/products/prd_cee1ddcb25a5526f/pay'
+)
+BEPAID_PAYMENT_URL_WITH_PROMO = os.getenv(
+    'BEPAID_PAYMENT_URL_WITH_PROMO',
+    'https://api.bepaid.by/products/prd_e96afb3851f78d9d/pay'
+)
+
 # Validate required variables
 if not TELEGRAM_TOKEN:
     raise ValueError(

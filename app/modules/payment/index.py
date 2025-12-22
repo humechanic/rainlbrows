@@ -12,6 +12,7 @@ from modules.payment.promocodes import (
     is_percentage_discount
 )
 from shared.utils.get_intensive_keyboard import get_intensive_keyboard
+from shared.utils.get_promocode_keyboard import get_promocode_keyboard
 from shared.constants.callback_register import CALLBACK_PROMOCODE
 from modules.main_menu.index import get_main_menu_keyboard
 
@@ -82,7 +83,8 @@ async def process_promocode(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💵 Цена со скидкой: {final_price_display:.2f} {INTENSIVE_CURRENCY}\n"
                 f"{discount_desc}"
             )
-            await update.message.reply_text(text, reply_markup=get_intensive_keyboard())
+            # Show keyboard with payment button for promocode discount
+            await update.message.reply_text(text, reply_markup=get_promocode_keyboard())
         else:
             # Check if it's "УРОК" promocode that expired
             if promocode.upper() == "УРОК":
